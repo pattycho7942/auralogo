@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraLogo - AI 기반 기업 로고 생성 플랫폼</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <header>
+    <div class="logo-brand">
+      <i class="lucide-sparkles"></i>
+      AuraLogo
+      <span class="badge-ai">AI Engine v2.5</span>
+    </div>
+    <div style="font-size: 0.9rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem;">
+      <i class="lucide-cpu" style="color: #60a5fa;"></i>
+      <span>LangChain & HuggingFace Powered</span>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <!-- Sidebar: Input Forms -->
+    <aside class="sidebar">
+      <h2>
+        <i class="lucide-sliders-horizontal" style="color: #3b82f6;"></i>
+        브랜드 설정
+      </h2>
+
+      <!-- Company Name -->
+      <div class="form-group" style="margin-top: 0.5rem;">
+        <label for="companyName">기업명</label>
+        <input type="text" id="companyName" class="form-control" placeholder="예: 카페 느림" value="카페 느림">
+      </div>
+
+      <!-- Slogan -->
+      <div class="form-group">
+        <label for="slogan">슬로건</label>
+        <input type="text" id="slogan" class="form-control" placeholder="예: 휴식이 있는 공간" value="휴식이 있는 공간">
+      </div>
+
+      <!-- Industry -->
+      <div class="form-group">
+        <label for="industry">업종</label>
+        <select id="industry" class="form-control">
+          <option value="food" selected>식음료 / 카페 / 베이커리</option>
+          <option value="tech">IT / 테크 / AI</option>
+          <option value="finance">금융 / 투자 / 컨설팅</option>
+          <option value="medical">의료 / 헬스케어 / 바이오</option>
+          <option value="fashion">패션 / 뷰티 / 디자인</option>
+          <option value="education">교육 / 학원 / 도서</option>
+          <option value="eco">친환경 / 건설 / 조경</option>
+        </select>
+      </div>
+
+      <!-- Logo Style -->
+      <div class="form-group">
+        <label for="logoStyle">로고 스타일</label>
+        <select id="logoStyle" class="form-control">
+          <option value="modern" selected>모던 & 미니멀 (Modern & Minimal)</option>
+          <option value="bold">볼드 & 임팩트 (Bold & Strong)</option>
+          <option value="elegant">우아함 & 럭셔리 (Elegant & Premium)</option>
+          <option value="geometric">기하학 & 신뢰 (Geometric & Solid)</option>
+          <option value="futuristic">미래지향적 (Futuristic & Sci-Fi)</option>
+        </select>
+      </div>
+
+      <!-- Logo Shape Type -->
+      <div class="form-group">
+        <label for="logoShape">로고 형태</label>
+        <select id="logoShape" class="form-control">
+          <option value="auto" selected>AI 자동 추천 (Recommended)</option>
+          <option value="emblem">엠블럼형 (Emblem)</option>
+          <option value="character">캐릭터형 심볼 (Character-like)</option>
+          <option value="lettering">레터링/이니셜 강조 (Lettering)</option>
+          <option value="abstract">추상/기하학 (Abstract)</option>
+        </select>
+      </div>
+
+      <!-- Color Themes -->
+      <div class="form-group">
+        <label>컬러 테마</label>
+        <div class="color-picker-grid" id="colorPickerGrid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- 1단계: AI 프롬프트 생성 버튼 -->
+      <button class="btn-primary-generate" id="generatePromptBtn" style="margin-top: 0.5rem;">
+        <i class="lucide-sparkles" style="fill: white;"></i>
+        <span>AI 프롬프트 생성하기</span>
+      </button>
+
+      <!-- 2단계: 프롬프트 조율 및 최종 로고 생성 영역 (숨김 상태였다가 나타남) -->
+      <div id="promptSection" class="prompt-section" style="display: none;">
+        <div class="form-group">
+          <label for="promptInput" style="color: #60a5fa; display: flex; justify-content: space-between;">
+            <span>AI 로고 프롬프트 (수정 가능)</span>
+            <span style="font-size: 0.75rem; color: #10b981;">Gemini 추천됨</span>
+          </label>
+          <textarea id="promptInput" class="form-control prompt-textarea" rows="4" placeholder="생성된 프롬프트가 여기에 표시됩니다."></textarea>
+        </div>
+
+        <button class="btn-secondary-generate" id="generateLogoBtn">
+          <i class="lucide-zap"></i>
+          <span>프롬프트 기반 로고 생성</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="content-area">
+      <!-- Workflow Status Banner -->
+      <div class="workflow-banner">
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; margin-bottom: 0.25rem;">Orchestration Workflow Status</div>
+          <div style="font-size: 0.95rem; font-weight: 700;">Aura AI 파이프라인 작동 상태</div>
+        </div>
+        <div class="workflow-steps" id="workflowSteps">
+          <div class="step-node active" id="step-ai">AI</div>
+          <div class="step-arrow">&rarr;</div>
+          <div class="step-node active" id="step-llm">LLM (Gemini)</div>
+          <div class="step-arrow">&rarr;</div>
+          <div class="step-node active" id="step-eda">EDA</div>
+          <div class="step-arrow">&rarr;</div>
+          <div class="step-node active" id="step-hugging">ChatGPT/HuggingFace</div>
+          <div class="step-arrow">&rarr;</div>
+          <div class="step-node active" id="step-lang">LangChain/LangGraph</div>
+        </div>
+      </div>
+
+      <!-- Pipeline Execution Log: 각 단계(LLM/EDA/ChatGPT+HF/LangGraph)가 실제로 만든 결과 -->
+      <div class="pipeline-log" id="pipelineLog"></div>
+
+      <div class="content-header">
+        <h1>AI 추천 디자인 에디션 (Top 3)</h1>
+        <div style="font-size: 0.9rem; color: var(--text-secondary);">프롬프트 키워드 분석을 통해 최적화된 로고 디자인을 렌더링합니다.</div>
+      </div>
+
+      <!-- Preview Grid -->
+      <div class="logo-grid" id="logoGrid">
+        <!-- 3 Recommended Logo cards will render here -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">
+    <i class="lucide-check-circle toast-icon"></i>
+    <span id="toastMessage">성공적으로 다운로드되었습니다.</span>
+  </div>
+
+  <script src="pipeline.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
