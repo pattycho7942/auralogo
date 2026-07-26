@@ -145,7 +145,7 @@ async function generateAIPrompt() {
   const style = document.getElementById('logoStyle').value;
   const shape = document.getElementById('logoShape').value;
 
-  const graph = buildAuraLogoGraph();
+  const graph = buildAuraLogoGraph({ generateImage: false });
 
   const finalState = await graph.run(
     { companyName, slogan, industry, style, shape },
@@ -376,8 +376,8 @@ async function generateLogos(runFullPipeline = false) {
   const colors = selectedTheme.colors;
 
   // 파이프라인 결과가 없거나(최초 로드) 강제 재실행 요청 시, EDA→ChatGPT/HF까지 다시 수행
-  if (runFullPipeline || !pipelineState) {
-    const graph = buildAuraLogoGraph();
+  if (runFullPipeline) {
+    const graph = buildAuraLogoGraph({ generateImage: true });
     pipelineState = await graph.run(
       { companyName, slogan, industry, style, shape: shapeType },
       (nodeName, output) => {
@@ -452,12 +452,15 @@ async function generateLogos(runFullPipeline = false) {
   if (!grid) return;
   grid.innerHTML = '';
 
-  recommendedVariants.forEach((v) => {
+  recommendedVariants.forEach((v, index) => {
     const card = document.createElement('div');
     card.className = `logo-card ${v.isDark ? 'dark-theme-card' : ''}`;
-    
+
     const keywordTags = pipelineState?.designSpec?.keywordTags || [];
-    const imageDataUrl = pipelineState?.designSpec?.imageDataUrl || null;
+    const images = pipelineState?.designSpec?.images || null;
+    // 카드마다 서로 다른 생성 이미지를 배정 (없으면 null → 기존 아이콘 매칭으로 폴백)
+    // 병렬 생성된 서로 다른 이미지를 카드마다 배정 (부족하면 마지막 이미지 재사용)
+    const imageDataUrl = images ? (images[index] || images[images.length - 1]) : null;
     const svgCode = getLogoSVG(v.id, companyName, slogan, industry, style, shapeType, colors, v.isDark, keywordTags, imageDataUrl);
 
     card.innerHTML = `
@@ -519,6 +522,18 @@ function resetWorkflowSteps() {
   clearPipelineLog();
 }
 
+function showLoadingBanner(text) {
+  const banner = document.getElementById('loadingBanner');
+  const textEl = document.getElementById('loadingBannerText');
+  if (textEl) textEl.textContent = text;
+  if (banner) banner.style.display = 'flex';
+}
+
+function hideLoadingBanner() {
+  const banner = document.getElementById('loadingBanner');
+  if (banner) banner.style.display = 'none';
+}
+
 // 그래프의 각 노드가 완료될 때마다 실제로 해당 배지를 켠다 (더 이상 고정 setTimeout 애니메이션이 아님)
 function activateWorkflowStep(nodeName) {
   const stepId = nodeToStepId[nodeName];
@@ -557,14 +572,145 @@ function summarizeStepOutput(nodeName, output) {
     case 'EDA':
       return `감지된 톤: ${output.edaResult.dominantTone}, 키워드 수: ${output.edaResult.tokens.length}`;
     case 'ChatGPT_HuggingFace':
-      return output.designSpec.imageDataUrl
-        ? `OpenAI 이미지 생성 성공 (신뢰도 ${(output.designSpec.confidence * 100).toFixed(0)}%)`
+      if (output.designSpec.source === 'prompt-only') {
+        return '프롬프트 텍스트만 생성 (이미지 생성은 로고 생성 버튼에서 진행)';
+      }
+      return (output.designSpec.images && output.designSpec.images.length > 0)
+        ? `OpenAI 이미지 ${output.designSpec.images.length}장 병렬 생성 성공 (신뢰도 ${(output.designSpec.confidence * 100).toFixed(0)}%)`
         : `백엔드 미연결 - 규칙 기반 태그로 폴백: ${output.designSpec.keywordTags.slice(0, 4).join(', ') || '없음'}`;
     case 'LangGraph_Finalize':
       return `전체 파이프라인 상태 취합 완료 → 시안 렌더링으로 전달`;
     default:
       return '';
   }
+}
+
+// 내보내기 드롭다운 열기/닫기
+let openDropdownState = null; // { menu, originalParent, dropdownEl }
+
+function closeOpenDropdown() {
+  if (!openDropdownState) return;
+  const { menu, originalParent, dropdownEl } = openDropdownState;
+  dropdownEl.classList.remove('open');
+  if (menu && originalParent) {
+    originalParent.appendChild(menu); // 원래 있던 카드 안으로 되돌려놓음
+    menu.style.position = '';
+    menu.style.left = '';
+    menu.style.width = '';
+    menu.style.bottom = '';
+    menu.style.marginBottom = '';
+  }
+  openDropdownState = null;
+}
+
+function toggleDropdown(variantId) {
+  const dropdown = document.getElementById(`dropdown-${variantId}`);
+  if (!dropdown) return;
+  const wasOpenForThisCard = openDropdownState && openDropdownState.dropdownEl === dropdown;
+  closeOpenDropdown();
+  if (wasOpenForThisCard) return; // 같은 카드에서 다시 누르면 닫기만 하고 종료
+
+  const btn = dropdown.querySelector('.btn-dropdown');
+  const menu = dropdown.querySelector('.dropdown-menu');
+  if (!btn || !menu) return;
+
+  // 카드에 overflow:hidden + hover 시 transform이 걸려 있어서,
+  // position:fixed를 걸어도 그 조상(transform 적용된 카드) 기준으로 계산되어 잘려 보이는 문제가 있었음.
+  // → 메뉴 DOM 자체를 <body> 바로 아래로 옮겨서 카드의 영향을 완전히 벗어나게 함.
+  const rect = btn.getBoundingClientRect();
+  const originalParent = menu.parentElement;
+  document.body.appendChild(menu);
+  menu.style.position = 'fixed';
+  menu.style.left = `${rect.left}px`;
+  menu.style.width = `${rect.width}px`;
+  menu.style.bottom = `${window.innerHeight - rect.top + 8}px`;
+  menu.style.marginBottom = '0';
+
+  dropdown.classList.add('open');
+  openDropdownState = { menu, originalParent, dropdownEl: dropdown };
+}
+
+// 드롭다운 바깥을 클릭하면 닫기 (메뉴가 body로 옮겨져 있을 수 있으므로 메뉴 자체도 함께 체크)
+document.addEventListener('click', (e) => {
+  if (!openDropdownState) return;
+  const { menu, dropdownEl } = openDropdownState;
+  if (dropdownEl.contains(e.target) || (menu && menu.contains(e.target))) return;
+  closeOpenDropdown();
+});
+
+// 스크롤하면 좌표가 어긋나므로 닫아버림
+document.addEventListener('scroll', () => {
+  closeOpenDropdown();
+}, true);
+
+function getSafeFileName() {
+  const name = (document.getElementById('companyName')?.value || 'auralogo').trim();
+  return name.replace(/[^a-zA-Z0-9가-힣]+/g, '_') || 'auralogo';
+}
+
+function triggerDownload(url, filename) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// SVG 벡터 / 고해상도 PNG 내보내기
+function downloadLogo(variantId, format) {
+  const container = document.getElementById(`container-${variantId}`);
+  const svgEl = container?.querySelector('svg');
+  if (!svgEl) return;
+
+  const fileBase = `${getSafeFileName()}_${variantId}`;
+  const svgString = new XMLSerializer().serializeToString(svgEl);
+
+  if (format === 'svg') {
+    const blob = new Blob([svgString], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    triggerDownload(url, `${fileBase}.svg`);
+    URL.revokeObjectURL(url);
+    showToast('SVG 파일이 다운로드되었습니다.');
+  } else if (format === 'png-high') {
+    const viewBox = (svgEl.getAttribute('viewBox') || '0 0 500 200').split(/\s+/).map(Number);
+    const [, , vw, vh] = viewBox;
+    const targetWidth = 1024;
+    const targetHeight = Math.round(1024 * (vh / vw));
+
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const svgUrl = URL.createObjectURL(svgBlob);
+    const img = new Image();
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+      URL.revokeObjectURL(svgUrl);
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          showToast('PNG 변환에 실패했습니다.');
+          return;
+        }
+        const pngUrl = URL.createObjectURL(blob);
+        triggerDownload(pngUrl, `${fileBase}.png`);
+        URL.revokeObjectURL(pngUrl);
+        showToast('고해상도 PNG가 다운로드되었습니다.');
+      }, 'image/png');
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(svgUrl);
+      showToast('PNG 변환 중 오류가 발생했습니다.');
+    };
+
+    img.src = svgUrl;
+  }
+
+  closeOpenDropdown();
 }
 
 function showToast(message) {
@@ -582,26 +728,46 @@ document.addEventListener('DOMContentLoaded', () => {
   // 1. AI 프롬프트 생성 버튼 - LLM_Interpret → EDA → ChatGPT/HuggingFace 파이프라인 실행
   const genPromptBtn = document.getElementById('generatePromptBtn');
   if (genPromptBtn) {
+    const originalPromptBtnHTML = genPromptBtn.innerHTML;
     genPromptBtn.addEventListener('click', async () => {
       resetWorkflowSteps();
       genPromptBtn.disabled = true;
-      await generateAIPrompt();
-      genPromptBtn.disabled = false;
+      genPromptBtn.innerHTML = '<span>AI 분석 중...</span>';
+      showLoadingBanner('AI 프롬프트를 생성하고 있습니다...');
+      try {
+        await generateAIPrompt();
+      } catch (err) {
+        showToast('프롬프트 생성 중 오류가 발생했습니다: ' + err.message);
+      } finally {
+        genPromptBtn.disabled = false;
+        genPromptBtn.innerHTML = originalPromptBtnHTML;
+        hideLoadingBanner();
+      }
     });
   }
 
   // 2. 최종 프롬프트 기반 로고 생성 버튼 - 파이프라인 재실행 후 EDA/디자인 스펙 반영해 시안 렌더링
   const genLogoBtn = document.getElementById('generateLogoBtn');
   if (genLogoBtn) {
+    const originalLogoBtnHTML = genLogoBtn.innerHTML;
     genLogoBtn.addEventListener('click', async () => {
       resetWorkflowSteps();
       genLogoBtn.disabled = true;
-      await generateLogos(true);
-      showToast('프롬프트가 반영된 신규 로고가 생성되었습니다.');
-      genLogoBtn.disabled = false;
+      genLogoBtn.innerHTML = '<span>이미지 생성 중...</span>';
+      showLoadingBanner('OpenAI로 로고 이미지 3장을 동시에 생성하고 있습니다... (보통 15~40초 소요)');
+      try {
+        await generateLogos(true);
+        showToast('프롬프트가 반영된 신규 로고가 생성되었습니다.');
+      } catch (err) {
+        showToast('로고 생성 중 오류가 발생했습니다: ' + err.message);
+      } finally {
+        genLogoBtn.disabled = false;
+        genLogoBtn.innerHTML = originalLogoBtnHTML;
+        hideLoadingBanner();
+      }
     });
   }
 
-  // 초기 실행 (파이프라인 없이 기본 시안만 빠르게 렌더링)
+  // 초기 실행 (API 호출 없이 기본 시안만 즉시 렌더링)
   generateLogos();
 });
