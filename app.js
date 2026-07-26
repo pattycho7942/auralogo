@@ -593,6 +593,7 @@ function closeOpenDropdown() {
   const { menu, originalParent, dropdownEl } = openDropdownState;
   dropdownEl.classList.remove('open');
   if (menu && originalParent) {
+    menu.classList.remove('open');
     originalParent.appendChild(menu); // 원래 있던 카드 안으로 되돌려놓음
     menu.style.position = '';
     menu.style.left = '';
@@ -627,6 +628,9 @@ function toggleDropdown(variantId) {
   menu.style.marginBottom = '0';
 
   dropdown.classList.add('open');
+  // body로 재부모화되면 .dropdown.open .dropdown-menu 선택자가 더 이상 안 먹으므로
+  // 메뉴 자신에게도 open 클래스를 붙여 별도 CSS 규칙(.dropdown-menu.open)으로 보이게 함
+  menu.classList.add('open');
   openDropdownState = { menu, originalParent, dropdownEl: dropdown };
 }
 

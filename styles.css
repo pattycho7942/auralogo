@@ -439,7 +439,8 @@ select.form-control option {
   z-index: 200;
 }
 
-.dropdown.open .dropdown-menu {
+.dropdown.open .dropdown-menu,
+.dropdown-menu.open {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
