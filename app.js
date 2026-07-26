@@ -748,6 +748,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (genPromptBtn) {
     const originalPromptBtnHTML = genPromptBtn.innerHTML;
     genPromptBtn.addEventListener('click', async () => {
+      if (!document.getElementById('companyName').value.trim()) {
+        showToast('기업명을 입력해 주세요.');
+        return;
+      }
       resetWorkflowSteps();
       genPromptBtn.disabled = true;
       genPromptBtn.innerHTML = '<span>AI 분석 중...</span>';
@@ -769,6 +773,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (genLogoBtn) {
     const originalLogoBtnHTML = genLogoBtn.innerHTML;
     genLogoBtn.addEventListener('click', async () => {
+      if (!document.getElementById('companyName').value.trim()) {
+        showToast('기업명을 입력해 주세요.');
+        return;
+      }
       resetWorkflowSteps();
       genLogoBtn.disabled = true;
       genLogoBtn.innerHTML = '<span>이미지 생성 중...</span>';
@@ -786,6 +794,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 초기 실행 (API 호출 없이 기본 시안만 즉시 렌더링)
-  generateLogos();
+  // 초기 실행: 예전엔 샘플 카드를 바로 보여줬지만, 이제는 안내 화면부터 표시
+  showIntroGuide();
 });
+
+// 최초 진입 시 보여줄 안내 화면
+function showIntroGuide() {
+  const grid = document.getElementById('logoGrid');
+  if (!grid) return;
+  grid.innerHTML = `
+    <div class="intro-guide">
+      <i class="lucide-sparkles" style="width: 36px; height: 36px; color: #60a5fa;"></i>
+      <h3>왼쪽에 브랜드 정보를 입력해주세요</h3>
+      <p>기업명과 슬로건을 입력하고 <strong>"AI 프롬프트 생성하기"</strong>를 누르면
+      AI가 분석한 프롬프트를 먼저 확인할 수 있어요.<br>
+      이어서 <strong>"프롬프트 기반 로고 생성"</strong>을 누르면 이 자리에 실제 로고 시안이 나타납니다.</p>
+    </div>
+  `;
+}

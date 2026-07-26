@@ -555,6 +555,34 @@ select.form-control option {
   to { transform: rotate(360deg); }
 }
 
+/* Intro Guide (최초 진입 화면) */
+.intro-guide {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 4rem 2rem;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.intro-guide h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.intro-guide p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 480px;
+}
+
 /* Pipeline Execution Log */
 .pipeline-log {
   display: flex;

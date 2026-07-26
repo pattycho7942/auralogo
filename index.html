@@ -33,13 +33,13 @@
       <!-- Company Name -->
       <div class="form-group" style="margin-top: 0.5rem;">
         <label for="companyName">기업명</label>
-        <input type="text" id="companyName" class="form-control" placeholder="예: 카페 느림" value="카페 느림">
+        <input type="text" id="companyName" class="form-control" placeholder="기업명을 입력해 주세요. (예: 카페 느림)">
       </div>
 
       <!-- Slogan -->
       <div class="form-group">
         <label for="slogan">슬로건</label>
-        <input type="text" id="slogan" class="form-control" placeholder="예: 휴식이 있는 공간" value="휴식이 있는 공간">
+        <input type="text" id="slogan" class="form-control" placeholder="슬로건을 입력해 주세요. (예: 휴식이 있는 공간)">
       </div>
 
       <!-- Industry -->
@@ -130,6 +130,12 @@
           <div class="step-arrow">&rarr;</div>
           <div class="step-node active" id="step-lang">LangChain/LangGraph</div>
         </div>
+      </div>
+
+      <!-- 생성 중 로딩 배너: 평소엔 숨겨져 있다가 파이프라인 실행 중에만 표시 -->
+      <div class="loading-banner" id="loadingBanner" style="display: none;">
+        <div class="loading-spinner"></div>
+        <span id="loadingBannerText">생성 중입니다...</span>
       </div>
 
       <!-- Pipeline Execution Log: 각 단계(LLM/EDA/ChatGPT+HF/LangGraph)가 실제로 만든 결과 -->
