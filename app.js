@@ -376,15 +376,29 @@ async function generateLogos(runFullPipeline = false) {
   const colors = selectedTheme.colors;
 
   // 파이프라인 결과가 없거나(최초 로드) 강제 재실행 요청 시, EDA→ChatGPT/HF까지 다시 수행
+  const requestSignature = JSON.stringify({ companyName, slogan, industry, style, shapeType });
   if (runFullPipeline) {
-    const graph = buildAuraLogoGraph({ generateImage: true });
-    pipelineState = await graph.run(
-      { companyName, slogan, industry, style, shape: shapeType },
-      (nodeName, output) => {
-        activateWorkflowStep(nodeName);
-        logPipelineStep(nodeName, output);
-      }
-    );
+    if (pipelineState && pipelineState.__signature === requestSignature && pipelineState.designSpec?.images) {
+      // 입력값이 그대로면 다시 돈 쓰지 않고 직전 생성 결과를 재사용
+      activateWorkflowStep('LLM_Interpret');
+      activateWorkflowStep('EDA');
+      activateWorkflowStep('ChatGPT_HuggingFace');
+      activateWorkflowStep('LangGraph_Finalize');
+      logPipelineStep('LLM_Interpret', { brief: { companyName, slogan } });
+      logPipelineStep('EDA', pipelineState);
+      logPipelineStep('ChatGPT_HuggingFace', pipelineState);
+      showToast('입력값이 그대로라 이전 생성 결과를 재사용했습니다 (API 비용 절약).');
+    } else {
+      const graph = buildAuraLogoGraph({ generateImage: true });
+      pipelineState = await graph.run(
+        { companyName, slogan, industry, style, shape: shapeType },
+        (nodeName, output) => {
+          activateWorkflowStep(nodeName);
+          logPipelineStep(nodeName, output);
+        }
+      );
+      pipelineState.__signature = requestSignature;
+    }
   }
 
   // 기본 스타일 기반 추천 목록
